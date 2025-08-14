@@ -4,72 +4,17 @@
 <meta charset="UTF-8">
 <title>Caça-palavras Backend & SQL</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #1e1e2e;
-        color: #fff;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-    }
-    h1 {
-        background: #4a90e2;
-        padding: 10px;
-        margin: 0;
-    }
-    #score, #phase {
-        font-size: 18px;
-        margin: 5px;
-    }
-    #grid {
-        display: grid;
-        gap: 2px;
-        justify-content: center;
-        margin: 20px auto;
-    }
-    .cell {
-        width: 35px;
-        height: 35px;
-        background: #2d2d3a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        user-select: none;
-        border-radius: 5px;
-        font-weight: bold;
-    }
-    .cell.selected {
-        background: #4a90e2;
-    }
-    .cell.found {
-        background: #27ae60;
-        color: #fff;
-    }
-    #words {
-        max-width: 300px;
-        margin: 0 auto;
-        text-align: left;
-    }
-    #words li {
-        list-style: none;
-        padding: 5px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    #words li.found {
-        text-decoration: line-through;
-        color: #27ae60;
-    }
-    button {
-        background: #4a90e2;
-        border: none;
-        padding: 10px 20px;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 15px;
-        border-radius: 5px;
-    }
+  body { font-family: Arial, sans-serif; background:#1e1e2e; color:#fff; text-align:center; margin:0 }
+  h1 { background:#4a90e2; padding:10px; margin:0 }
+  #score,#phase { font-size:18px; margin:5px }
+  #grid { display:grid; gap:2px; justify-content:center; margin:20px auto }
+  .cell { width:35px; height:35px; background:#2d2d3a; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; border-radius:5px; font-weight:bold; }
+  .cell.selected { outline:2px solid #4a90e2; }
+  .cell.found { background:#27ae60; color:#fff; }
+  #words { max-width:320px; margin:0 auto; text-align:left }
+  #words li { list-style:none; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.1) }
+  #words li.found { text-decoration:line-through; color:#27ae60 }
+  button { background:#4a90e2; border:none; padding:10px 20px; color:white; font-size:16px; cursor:pointer; margin:15px 0; border-radius:8px }
 </style>
 </head>
 <body>
@@ -83,172 +28,181 @@
 
 <script>
 const phases = [
-    {words: ["BACKEND","API","ROUTES","DATABASE","QUERY"], size: 10},
-    {words: ["SELECT","INSERT","UPDATE","DELETE","TABLE"], size: 10},
-    {words: ["SERVER","JSON","POST","GET","INDEX"], size: 10},
-    {words: ["PRIMARY","FOREIGN","KEY","RELATION","JOIN"], size: 10},
-    {words: ["MYSQL","POSTGRES","MONGODB","SQLITE","TRIGGER"], size: 10},
-    {words: ["CACHE","SESSION","COOKIE","AUTH","TOKEN"], size: 10},
-    {words: ["LINUX","SHELL","SCRIPT","BASH","CRON"], size: 10},
-    {words: ["PYTHON","NODEJS","JAVASCRIPT","JAVA","PHP"], size: 10},
-    {words: ["FRAMEWORK","LARAVEL","EXPRESS","SPRING","DJANGO"], size: 10},
-    {words: ["APIREST","GRAPHQL","ENDPOINT","CLIENT","REQUEST"], size: 10}
+  {words:["BACKEND","API","ROUTES","DATABASE","QUERY"], size:10},
+  {words:["SELECT","INSERT","UPDATE","DELETE","TABLE"], size:10},
+  {words:["SERVER","JSON","POST","GET","INDEX"], size:10},
+  {words:["PRIMARY","FOREIGN","KEY","RELATION","JOIN"], size:10},
+  {words:["MYSQL","POSTGRES","MONGODB","SQLITE","TRIGGER"], size:10},
+  {words:["CACHE","SESSION","COOKIE","AUTH","TOKEN"], size:10},
+  {words:["LINUX","SHELL","SCRIPT","BASH","CRON"], size:10},
+  {words:["PYTHON","NODEJS","JAVASCRIPT","JAVA","PHP"], size:10},
+  {words:["FRAMEWORK","LARAVEL","EXPRESS","SPRING","DJANGO"], size:10},
+  {words:["APIREST","GRAPHQL","ENDPOINT","CLIENT","REQUEST"], size:10}
 ];
 
 let currentPhase = 0;
 let score = 0;
 let selectedCells = [];
-let foundWords = [];
+let foundSet = new Set();   // controla palavras já encontradas na fase
 
-const gridElement = document.getElementById("grid");
+const gridElement  = document.getElementById("grid");
 const wordsElement = document.getElementById("words");
 const scoreElement = document.getElementById("score");
 const phaseElement = document.getElementById("phase");
-const nextButton = document.getElementById("nextPhase");
+const nextButton   = document.getElementById("nextPhase");
 
-// Função para tentar inserir palavra com cruzamentos válidos
+// Colocação segura permitindo cruzamentos com letras iguais
 function tryPlaceWord(grid, word, size) {
-    let attempts = 0;
-    while (attempts < 200) {
-        attempts++;
-        let dir = Math.floor(Math.random()*3); 
-        let row = Math.floor(Math.random()*size);
-        let col = Math.floor(Math.random()*size);
+  let attempts = 0;
+  while (attempts < 300) {
+    attempts++;
+    const dir = Math.floor(Math.random()*3); // 0=→, 1=↓, 2=↘
+    const row = Math.floor(Math.random()*size);
+    const col = Math.floor(Math.random()*size);
 
-        let dr = (dir === 0) ? 0 : (dir === 1 ? 1 : 1);
-        let dc = (dir === 0) ? 1 : (dir === 1 ? 0 : 1);
+    const dr = (dir===0)?0:(dir===1?1:1);
+    const dc = (dir===0)?1:(dir===1?0:1);
 
-        if (row + dr * (word.length - 1) >= size || col + dc * (word.length - 1) >= size) {
-            continue;
-        }
+    if (row + dr*(word.length-1) >= size || col + dc*(word.length-1) >= size) continue;
 
-        let canPlace = true;
-        for (let i = 0; i < word.length; i++) {
-            let r = row + dr * i;
-            let c = col + dc * i;
-            if (grid[r][c] !== "" && grid[r][c] !== word[i]) {
-                canPlace = false;
-                break;
-            }
-        }
-
-        if (canPlace) {
-            for (let i = 0; i < word.length; i++) {
-                let r = row + dr * i;
-                let c = col + dc * i;
-                grid[r][c] = word[i];
-            }
-            return true;
-        }
+    let ok = true;
+    for (let i=0;i<word.length;i++){
+      const r = row + dr*i, c = col + dc*i;
+      const cell = grid[r][c];
+      if (cell !== "" && cell !== word[i]) { ok = false; break; }
     }
-    return false;
+    if (!ok) continue;
+
+    for (let i=0;i<word.length;i++){
+      const r = row + dr*i, c = col + dc*i;
+      grid[r][c] = word[i];
+    }
+    return true;
+  }
+  return false;
 }
 
 function generateGrid(size, words) {
-    gridElement.innerHTML = "";
-    gridElement.style.gridTemplateColumns = `repeat(${size}, 35px)`;
-    foundWords = [];
-    selectedCells = [];
+  gridElement.innerHTML = "";
+  gridElement.style.gridTemplateColumns = `repeat(${size}, 35px)`;
+  selectedCells = [];
+  foundSet = new Set();
 
-    let grid = Array.from({length: size}, () => Array(size).fill(""));
+  const grid = Array.from({length:size}, ()=>Array(size).fill(""));
 
-    // Inserir palavras com cruzamentos permitidos
-    words.forEach(word => {
-        if (!tryPlaceWord(grid, word, size)) {
-            console.warn(`Não foi possível posicionar a palavra: ${word}`);
-        }
-    });
+  // coloca palavras
+  words.forEach(w => {
+    if (!tryPlaceWord(grid, w, size)) console.warn("Falha ao posicionar:", w);
+  });
 
-    // Preencher espaços vazios
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            if (!grid[r][c]) grid[r][c] = letters[Math.floor(Math.random()*letters.length)];
-        }
+  // completa com letras
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let r=0;r<size;r++){
+    for (let c=0;c<size;c++){
+      if (!grid[r][c]) grid[r][c] = letters[Math.floor(Math.random()*letters.length)];
     }
+  }
 
-    // Renderizar
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const cell = document.createElement("div");
-            cell.className = "cell";
-            cell.textContent = grid[r][c];
-            cell.dataset.row = r;
-            cell.dataset.col = c;
-            cell.addEventListener("click", () => selectCell(cell, words));
-            gridElement.appendChild(cell);
-        }
+  // renderiza grade
+  for (let r=0;r<size;r++){
+    for (let c=0;c<size;c++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = grid[r][c];
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener("click", () => selectCell(cell, words));
+      gridElement.appendChild(cell);
     }
+  }
 
-    // Lista de palavras
-    wordsElement.innerHTML = "";
-    words.forEach(w => {
-        let li = document.createElement("li");
-        li.textContent = w;
-        li.id = `phase${currentPhase}-word-${w}`;
-        wordsElement.appendChild(li);
-    });
+  // lista de palavras
+  wordsElement.innerHTML = "";
+  words.forEach(w => {
+    const li = document.createElement("li");
+    li.textContent = w;
+    li.id = `phase${currentPhase}-word-${w}`;
+    wordsElement.appendChild(li);
+  });
 }
 
+// valida se a seleção segue direção constante (→, ←, ↑, ↓, diagonais)
 function isValidDirection(cells) {
-    if (cells.length < 2) return true;
-    let dr = cells[1].dataset.row - cells[0].dataset.row;
-    let dc = cells[1].dataset.col - cells[0].dataset.col;
-    return cells.every((cell, i) => {
-        if (i === 0) return true;
-        return (cell.dataset.row - cells[i-1].dataset.row == dr &&
-                cell.dataset.col - cells[i-1].dataset.col == dc);
-    });
+  if (cells.length < 2) return true;
+  const r0 = Number(cells[0].dataset.row), c0 = Number(cells[0].dataset.col);
+  const r1 = Number(cells[1].dataset.row), c1 = Number(cells[1].dataset.col);
+  const dr = Math.sign(r1 - r0);
+  const dc = Math.sign(c1 - c0);
+  // passo deve ser -1, 0 ou 1; (0,0) só no primeiro clique
+  if (dr===0 && dc===0) return false;
+  for (let i=1;i<cells.length;i++){
+    const rPrev = Number(cells[i-1].dataset.row), cPrev = Number(cells[i-1].dataset.col);
+    const rCur  = Number(cells[i].dataset.row),  cCur  = Number(cells[i].dataset.col);
+    if (rCur - rPrev !== dr || cCur - cPrev !== dc) return false;
+  }
+  return true;
+}
+
+function clearSelection() {
+  selectedCells.forEach(c => c.classList.remove("selected"));
+  selectedCells = [];
 }
 
 function selectCell(cell, words) {
-    if (cell.classList.contains("found")) return;
+  // ⚠️ Permitimos clicar em células já encontradas (para cruzamentos)
+  if (cell.classList.contains("selected")) {
+    cell.classList.remove("selected");
+    selectedCells = selectedCells.filter(c => c !== cell);
+  } else {
+    cell.classList.add("selected");
+    selectedCells.push(cell);
+  }
 
-    if (cell.classList.contains("selected")) {
-        cell.classList.remove("selected");
-        selectedCells = selectedCells.filter(c => c !== cell);
-    } else {
-        cell.classList.add("selected");
-        selectedCells.push(cell);
+  if (!isValidDirection(selectedCells)) {
+    clearSelection();
+    return;
+  }
+
+  const selectedWord = selectedCells.map(c => c.textContent).join("");
+  const reverseWord  = selectedWord.split("").reverse().join("");
+
+  if (words.includes(selectedWord) || words.includes(reverseWord)) {
+    const finalWord = words.includes(selectedWord) ? selectedWord : reverseWord;
+
+    // evita repetir palavra (sem pontos duplicados)
+    if (foundSet.has(finalWord)) {
+      clearSelection();
+      return;
     }
 
-    if (!isValidDirection(selectedCells)) {
-        selectedCells.forEach(c => c.classList.remove("selected"));
-        selectedCells = [];
-        return;
-    }
+    foundSet.add(finalWord);
+    score += 10;
+    scoreElement.textContent = `Pontuação: ${score}`;
 
-    const selectedWord = selectedCells.map(c => c.textContent).join("");
-    const reverseWord = selectedWord.split("").reverse().join("");
-    if (words.includes(selectedWord) || words.includes(reverseWord)) {
-        const finalWord = words.includes(selectedWord) ? selectedWord : reverseWord;
-        foundWords.push(finalWord);
-        score += 10;
-        scoreElement.textContent = `Pontuação: ${score}`;
-        selectedCells.forEach(c => {
-            c.classList.remove("selected");
-            c.classList.add("found");
-        });
-        document.getElementById(`phase${currentPhase}-word-${finalWord}`).classList.add("found");
-        selectedCells = [];
+    // marca células como encontradas (as que já eram permanecem)
+    selectedCells.forEach(c => { c.classList.remove("selected"); c.classList.add("found"); });
+    document.getElementById(`phase${currentPhase}-word-${finalWord}`)?.classList.add("found");
+    selectedCells = [];
 
-        if (foundWords.length === words.length) {
-            if (currentPhase < phases.length - 1) {
-                nextButton.style.display = "inline-block";
-            } else {
-                alert("🎉 Parabéns! Você completou todas as fases!");
-            }
-        }
+    // fim da fase?
+    if (foundSet.size === words.length) {
+      if (currentPhase < phases.length - 1) {
+        nextButton.style.display = "inline-block";
+      } else {
+        alert("🎉 Parabéns! Você completou todas as fases!");
+      }
     }
+  }
 }
 
 nextButton.addEventListener("click", () => {
-    currentPhase++;
-    phaseElement.textContent = `Fase: ${currentPhase+1} / ${phases.length}`;
-    nextButton.style.display = "none";
-    generateGrid(phases[currentPhase].size, phases[currentPhase].words);
+  currentPhase++;
+  phaseElement.textContent = `Fase: ${currentPhase+1} / ${phases.length}`;
+  nextButton.style.display = "none";
+  generateGrid(phases[currentPhase].size, phases[currentPhase].words);
 });
 
+// inicializa
 phaseElement.textContent = `Fase: 1 / ${phases.length}`;
 generateGrid(phases[0].size, phases[0].words);
 </script>
