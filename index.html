@@ -106,6 +106,44 @@ const scoreElement = document.getElementById("score");
 const phaseElement = document.getElementById("phase");
 const nextButton = document.getElementById("nextPhase");
 
+// Função para tentar inserir palavra com cruzamentos válidos
+function tryPlaceWord(grid, word, size) {
+    let attempts = 0;
+    while (attempts < 200) {
+        attempts++;
+        let dir = Math.floor(Math.random()*3); 
+        let row = Math.floor(Math.random()*size);
+        let col = Math.floor(Math.random()*size);
+
+        let dr = (dir === 0) ? 0 : (dir === 1 ? 1 : 1);
+        let dc = (dir === 0) ? 1 : (dir === 1 ? 0 : 1);
+
+        if (row + dr * (word.length - 1) >= size || col + dc * (word.length - 1) >= size) {
+            continue;
+        }
+
+        let canPlace = true;
+        for (let i = 0; i < word.length; i++) {
+            let r = row + dr * i;
+            let c = col + dc * i;
+            if (grid[r][c] !== "" && grid[r][c] !== word[i]) {
+                canPlace = false;
+                break;
+            }
+        }
+
+        if (canPlace) {
+            for (let i = 0; i < word.length; i++) {
+                let r = row + dr * i;
+                let c = col + dc * i;
+                grid[r][c] = word[i];
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 function generateGrid(size, words) {
     gridElement.innerHTML = "";
     gridElement.style.gridTemplateColumns = `repeat(${size}, 35px)`;
@@ -114,25 +152,10 @@ function generateGrid(size, words) {
 
     let grid = Array.from({length: size}, () => Array(size).fill(""));
 
-    // Inserir palavras
+    // Inserir palavras com cruzamentos permitidos
     words.forEach(word => {
-        let placed = false;
-        while (!placed) {
-            let dir = Math.floor(Math.random()*3); 
-            let row = Math.floor(Math.random()*size);
-            let col = Math.floor(Math.random()*size);
-            if (dir === 0 && col + word.length <= size) { 
-                for (let i = 0; i < word.length; i++) grid[row][col+i] = word[i];
-                placed = true;
-            }
-            else if (dir === 1 && row + word.length <= size) { 
-                for (let i = 0; i < word.length; i++) grid[row+i][col] = word[i];
-                placed = true;
-            }
-            else if (dir === 2 && row + word.length <= size && col + word.length <= size) { 
-                for (let i = 0; i < word.length; i++) grid[row+i][col+i] = word[i];
-                placed = true;
-            }
+        if (!tryPlaceWord(grid, word, size)) {
+            console.warn(`Não foi possível posicionar a palavra: ${word}`);
         }
     });
 
